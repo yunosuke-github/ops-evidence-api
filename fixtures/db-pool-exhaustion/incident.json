@@ -1,0 +1,11 @@
+{
+  "title": "Reporting API latency and 503 responses",
+  "scenarioId": "db-pool-exhaustion",
+  "alert": {
+    "id": "alert:db-pool-saturation",
+    "name": "Database connection pool saturation",
+    "source": "synthetic-prometheus",
+    "firedAt": "2026-07-12T02:14:03Z",
+    "description": "reporting-api has had zero idle database connections and pending borrowers for two minutes."
+  }
+}

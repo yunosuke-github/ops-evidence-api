@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ops_evidence
+      POSTGRES_USER: ops_evidence
+      POSTGRES_PASSWORD: ops_evidence
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ops_evidence -d ops_evidence"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+
+  api:
+    build:
+      context: .
+    environment:
+      OPS_ENVIRONMENT: development
+      OPS_DATABASE_URL: postgresql+psycopg://ops_evidence:ops_evidence@db:5432/ops_evidence
+      OPS_FAKE_RUNNER_ENABLED: "true"
+      OPS_FIXTURE_ROOT: /app/fixtures
+    command:
+      - /bin/sh
+      - -ec
+      - uv run alembic upgrade head && exec uvicorn ops_evidence_api.main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=2)"
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    ports:
+      - "${OPS_API_PORT:-8080}:8000"
+
+volumes:
+  postgres-data:

@@ -1,0 +1,76 @@
+{
+  "$id": "https://ynaito.dev/schemas/ops-evidence/events/v1/analysis-progressed.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "analysisId": {
+      "format": "uuid",
+      "title": "Analysisid",
+      "type": "string"
+    },
+    "correlationId": {
+      "format": "uuid",
+      "title": "Correlationid",
+      "type": "string"
+    },
+    "eventId": {
+      "format": "uuid",
+      "title": "Eventid",
+      "type": "string"
+    },
+    "eventType": {
+      "const": "analysis.progressed",
+      "default": "analysis.progressed",
+      "title": "Eventtype",
+      "type": "string"
+    },
+    "occurredAt": {
+      "format": "date-time",
+      "title": "Occurredat",
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "sequence": {
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "stage": {
+      "enum": [
+        "retrieving",
+        "analyzing",
+        "validating"
+      ],
+      "title": "Stage",
+      "type": "string"
+    },
+    "traceparent": {
+      "anyOf": [
+        {
+          "maxLength": 255,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Traceparent"
+    }
+  },
+  "required": [
+    "eventId",
+    "occurredAt",
+    "analysisId",
+    "correlationId",
+    "stage",
+    "sequence"
+  ],
+  "title": "AnalysisProgressedEvent",
+  "type": "object"
+}

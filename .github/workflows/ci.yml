@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: ops_evidence_test
+          POSTGRES_USER: ops_evidence
+          POSTGRES_PASSWORD: ops_evidence
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ops_evidence -d ops_evidence_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      OPS_DATABASE_URL: postgresql+psycopg://ops_evidence:ops_evidence@localhost:5432/ops_evidence_test
+      OPS_TEST_DATABASE_URL: postgresql+psycopg://ops_evidence:ops_evidence@localhost:5432/ops_evidence_test
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.7.13"
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-groups
+
+      - name: Apply database migrations
+        run: uv run alembic upgrade head
+
+      - name: Check formatting and lint
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
+
+      - name: Check types
+        run: uv run mypy src scripts
+
+      - name: Check generated contracts
+        run: |
+          uv run python scripts/export_contracts.py
+          git diff --exit-code -- contracts
+
+      - name: Run tests
+        run: >-
+          uv run pytest
+          --cov=ops_evidence_api
+          --cov-report=term-missing
+          --cov-report=xml
+          --cov-fail-under=85
+
+      - name: Build container
+        run: docker build --tag ops-evidence-api:test .

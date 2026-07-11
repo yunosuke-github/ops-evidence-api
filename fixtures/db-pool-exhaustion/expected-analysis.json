@@ -1,0 +1,146 @@
+{
+  "evidence": [
+    {
+      "id": "alert:db-pool-saturation",
+      "sourceType": "alert",
+      "summary": "The alert reports sustained pool saturation.",
+      "excerpt": "zero idle database connections and pending borrowers for two minutes"
+    },
+    {
+      "id": "log:0001",
+      "sourceType": "log",
+      "summary": "A large annual export started immediately before saturation.",
+      "excerpt": "Started annual report export"
+    },
+    {
+      "id": "log:0002",
+      "sourceType": "log",
+      "summary": "All 20 connections were active and eight requests were waiting.",
+      "excerpt": "active=20 idle=0 pending=8 maximum=20"
+    },
+    {
+      "id": "log:0003",
+      "sourceType": "log",
+      "summary": "A request timed out while waiting for a connection.",
+      "excerpt": "Connection is not available; request timed out after 3000ms"
+    },
+    {
+      "id": "log:0005",
+      "sourceType": "log",
+      "summary": "The queue of waiting requests grew while the pool remained full.",
+      "excerpt": "active=20 idle=0 pending=31 maximum=20"
+    },
+    {
+      "id": "log:0006",
+      "sourceType": "log",
+      "summary": "The annual export query completed after about 18 seconds.",
+      "excerpt": "operation=annual-report-export durationMs=18152"
+    },
+    {
+      "id": "log:0007",
+      "sourceType": "log",
+      "summary": "Pool capacity recovered immediately after the export completed.",
+      "excerpt": "active=4 idle=16 pending=0 maximum=20"
+    },
+    {
+      "id": "runbook:db-pool-saturation",
+      "sourceType": "runbook",
+      "summary": "The runbook defines the observed metrics as pool saturation.",
+      "excerpt": "active equals maximum, idle is zero, and pending is greater than zero"
+    },
+    {
+      "id": "runbook:long-running-query-check",
+      "sourceType": "runbook",
+      "summary": "The runbook recommends correlating long queries with the saturation window.",
+      "excerpt": "Compare the start and completion time of long-running queries with the saturation window."
+    }
+  ],
+  "timeline": [
+    {
+      "timestamp": "2026-07-12T02:14:01Z",
+      "summary": "An annual report export started.",
+      "evidenceIds": ["log:0001"]
+    },
+    {
+      "timestamp": "2026-07-12T02:14:03Z",
+      "summary": "The connection pool reached its maximum and requests began waiting.",
+      "evidenceIds": ["alert:db-pool-saturation", "log:0002"]
+    },
+    {
+      "timestamp": "2026-07-12T02:14:07Z",
+      "summary": "Pending connection borrowers rose from eight to 31.",
+      "evidenceIds": ["log:0002", "log:0005"]
+    },
+    {
+      "timestamp": "2026-07-12T02:14:20Z",
+      "summary": "Idle connections recovered after the annual export query completed.",
+      "evidenceIds": ["log:0006", "log:0007"]
+    }
+  ],
+  "observations": [
+    {
+      "id": "observation:pool-saturated",
+      "statement": "The pool was saturated: active equaled maximum, idle was zero, and pending borrowers increased.",
+      "evidenceIds": ["log:0002", "log:0005", "runbook:db-pool-saturation"]
+    },
+    {
+      "id": "observation:checkout-timeout",
+      "statement": "At least one API request returned 503 after timing out on connection checkout.",
+      "evidenceIds": ["log:0003"]
+    },
+    {
+      "id": "observation:recovery-correlation",
+      "statement": "Pool recovery followed the completion of the long-running export query.",
+      "evidenceIds": ["log:0006", "log:0007"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hypothesis:long-export-saturation",
+      "title": "Long-running export work exhausted the connection pool",
+      "summary": "The annual export overlapped the entire saturation window, and capacity returned immediately after it completed. This is strong correlation, but a query plan is still needed before calling it the root cause.",
+      "evidenceScore": 88,
+      "supportingEvidenceIds": ["log:0001", "log:0002", "log:0005", "log:0006", "log:0007", "runbook:long-running-query-check"],
+      "contradictingEvidenceIds": []
+    },
+    {
+      "id": "hypothesis:database-outage",
+      "title": "The database server was unavailable",
+      "summary": "Connection checkout errors are compatible with an outage, but the export query completed and existing connections remained active, which weakens this hypothesis.",
+      "evidenceScore": 24,
+      "supportingEvidenceIds": ["log:0003"],
+      "contradictingEvidenceIds": ["log:0006", "log:0007"]
+    }
+  ],
+  "informationGaps": [
+    {
+      "id": "gap:query-plan",
+      "description": "No query plan, lock-wait data, or database CPU metrics were provided for the export query."
+    },
+    {
+      "id": "gap:concurrent-exports",
+      "description": "The evidence does not show how many exports were running concurrently."
+    }
+  ],
+  "nextChecks": [
+    {
+      "id": "check:capture-query-plan",
+      "description": "Capture the export query plan and lock waits before changing pool capacity.",
+      "hypothesisIds": ["hypothesis:long-export-saturation"]
+    },
+    {
+      "id": "check:database-health",
+      "description": "Verify database availability and error rate during the saturation window.",
+      "hypothesisIds": ["hypothesis:database-outage"]
+    }
+  ],
+  "metadata": {
+    "provider": "local-fixture",
+    "model": "deterministic-demo-v1",
+    "promptVersion": "fixture-1",
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "latencyMs": 150,
+    "deterministic": true
+  }
+}

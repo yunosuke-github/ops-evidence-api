@@ -1,0 +1,88 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ops-evidence-api"
+version = "0.1.0"
+description = "Evidence-grounded incident analysis API with reliable asynchronous boundaries."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [
+  { name = "Yunosuke Naito" },
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: FastAPI",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+dependencies = [
+  "alembic>=1.15.0",
+  "fastapi>=0.115.0",
+  "psycopg[binary]>=3.2.0",
+  "pydantic-settings>=2.8.0",
+  "sqlalchemy[asyncio]>=2.0.38",
+  "uvicorn[standard]>=0.34.0",
+]
+
+[dependency-groups]
+dev = [
+  "asgi-lifespan>=2.1.0",
+  "httpx>=0.28.0",
+  "jsonschema>=4.23.0",
+  "mypy>=1.15.0",
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.25.0",
+  "pytest-cov>=6.0.0",
+  "ruff>=0.11.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ops_evidence_api"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ASYNC", "B", "DTZ", "E", "F", "I", "PT", "RUF", "S", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/versions/*.py" = ["E501"]
+"tests/**/*.py" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["alembic.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+  "integration: requires a PostgreSQL database",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["ops_evidence_api"]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+]
+show_missing = true
+skip_covered = true
